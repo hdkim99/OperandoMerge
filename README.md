@@ -19,14 +19,13 @@ canonical rows remain missing rather than receiving invented chromatograms.
 
 ## Install
 
-Python 3.10 or newer is required. PyPI publication is prepared but is not yet
-available, so install from the public source repository:
+Python 3.10 or newer is required. Install the published package from PyPI:
 
 ```bash
-python -m pip install "operandomerge @ git+https://github.com/hdkim99/OperandoMerge.git"
+python -m pip install operandomerge
 ```
 
-For development:
+For development and the bundled source examples, use a source checkout:
 
 ```bash
 git clone https://github.com/hdkim99/OperandoMerge.git
@@ -133,7 +132,7 @@ export_excel(result, Path("operandomerge-showcase.xlsx"))
 
 ## Supported, experimental, planned
 
-Supported in 0.1.1:
+Supported in 0.1.2:
 
 - multiple CSV/XLSX inputs and one selected worksheet per dataset;
 - absolute/injection timestamps, elapsed seconds/minutes, and midnight-wrapping

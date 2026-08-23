@@ -22,6 +22,7 @@ def test_package_runtime_citation_changelog_and_readme_versions_match() -> None:
     citation_version = _match("CITATION.cff", r"^version: ([^\s]+)$")
     changelog_version = _match("CHANGELOG.md", r"^## \[([^]]+)\]")
     readme_version = _match("README.md", r"^Supported in ([^:]+):$")
+    assert project_version == "0.1.2"
     assert operandomerge.__version__ == project_version
     assert version("operandomerge") == project_version
     assert citation_version == project_version

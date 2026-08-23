@@ -3,7 +3,15 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
-## [0.1.1] - Unreleased
+## [0.1.2] - 2026-08-23
+
+### Fixed
+
+- Made the published PyPI package the primary installation path in the README.
+- Corrected the README support status and synchronized package metadata for the
+  documentation-only patch release.
+
+## [0.1.1] - 2026-08-23
 
 ### Added
 
