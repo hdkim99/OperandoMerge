@@ -46,5 +46,7 @@ never silently invent timezone, measurements, offsets, or interpolation. Public-
 derived fixtures must record source, license, checksum, and reduction method. Never
 commit credentials, internal paths, or unlicensed files.
 
-The DGX CI jobs deliberately skip fork pull requests. Maintainers must review external
-changes before reproducing them on a same-repository branch; do not weaken that boundary.
+The DGX CI jobs run pull requests only when the current repository owner opens them from
+a same-repository branch. Fork and bot-authored pull-request jobs are deliberately
+skipped. Maintainers must review external and dependency changes before reproducing them
+on an owner-authored branch; do not weaken that boundary.

@@ -17,10 +17,11 @@ concurrency:
 jobs:
   required:
     name: CI / required
-    # Public fork PR code must never execute on the private DGX runner.
+    # Only owner-authored same-repository PRs may execute on the persistent DGX.
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.actor == github.repository_owner &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, dgx-spark]
     timeout-minutes: 60
     env:
@@ -155,10 +156,11 @@ jobs:
 
   python-compatibility:
     name: CI / Python ${{ matrix.python }} compatibility
-    # Apply the same fork-PR security boundary to every DGX job.
+    # Apply the same external/bot PR security boundary to every DGX job.
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.actor == github.repository_owner &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, dgx-spark]
     timeout-minutes: 30
     strategy:
