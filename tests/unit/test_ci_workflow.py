@@ -18,6 +18,13 @@ def test_general_ci_uses_secured_dgx_jobs_and_complete_runtime_path() -> None:
     assert "workflow_dispatch:" in workflow
     assert "PIP_NO_CACHE_DIR" in workflow
     assert "--only-binary=:all:" in workflow
+    assert "/opt/catalysttwin-actions/shared-gui-runtime" in workflow
+    assert '>> "$GITHUB_PATH"' in workflow
+    assert "LD_LIBRARY_PATH=%s\\n" in workflow
+    assert "TK_LIBRARY=%s\\n" in workflow
+    assert "command -v Xvfb" in workflow
+    assert "command -v xvfb-run" in workflow
+    assert 'python -c "import tkinter' in workflow
     assert "-m ruff check ." in workflow
     assert "-m mypy src" in workflow
     assert "-m pytest" in workflow

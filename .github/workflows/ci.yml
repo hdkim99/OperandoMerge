@@ -40,6 +40,22 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.14"
+      - name: Configure and verify shared GUI runtime
+        env:
+          GUI_RUNTIME: /opt/catalysttwin-actions/shared-gui-runtime
+        run: |
+          test -d "$GUI_RUNTIME/usr/bin"
+          test -d "$GUI_RUNTIME/usr/lib/aarch64-linux-gnu"
+          test -d "$GUI_RUNTIME/usr/share/tcltk/tk8.6"
+          export PATH="$GUI_RUNTIME/usr/bin:$PATH"
+          export LD_LIBRARY_PATH="$GUI_RUNTIME/usr/lib/aarch64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export TK_LIBRARY="$GUI_RUNTIME/usr/share/tcltk/tk8.6"
+          printf '%s\n' "$GUI_RUNTIME/usr/bin" >> "$GITHUB_PATH"
+          printf 'LD_LIBRARY_PATH=%s\n' "$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          printf 'TK_LIBRARY=%s\n' "$TK_LIBRARY" >> "$GITHUB_ENV"
+          command -v Xvfb
+          command -v xvfb-run
+          python -c "import tkinter; print(tkinter.TkVersion)"
       - name: Verify DGX ARM64 runner
         run: >-
           python -c
