@@ -1,0 +1,6 @@
+elapsed_s,temperature_C,pressure_bar,valve_state
+0,25,1.00,0
+10,100,1.02,0
+20,200,1.05,1
+30,300,1.03,1
+

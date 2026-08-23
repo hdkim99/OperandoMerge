@@ -1,0 +1,47 @@
+{
+  "datasets": [
+    {
+      "path": "reactor_logger.csv",
+      "name": "reactor",
+      "time_column": "elapsed_s",
+      "time_representation": "elapsed_seconds",
+      "channels": [
+        {"source_column": "temperature_C", "data_type": "continuous"},
+        {"source_column": "pressure_bar", "data_type": "continuous"},
+        {"source_column": "valve_state", "data_type": "stepwise"}
+      ],
+      "alignment": {"method": "elapsed"}
+    },
+    {
+      "path": "ms.csv",
+      "name": "ms",
+      "time_column": "reported_s",
+      "time_representation": "elapsed_seconds",
+      "channels": [
+        {"source_column": "mz_44", "data_type": "continuous"},
+        {"source_column": "mz_28", "data_type": "continuous"}
+      ],
+      "alignment": {"method": "elapsed"},
+      "delay": {"sampling_s": 2}
+    },
+    {
+      "path": "gc.csv",
+      "name": "gc",
+      "time_column": "injection_timestamp",
+      "time_representation": "injection_timestamp",
+      "channels": [
+        {"source_column": "co2_area", "data_type": "discrete_sample"},
+        {"source_column": "methane_area", "data_type": "discrete_sample"}
+      ],
+      "alignment": {"method": "absolute"},
+      "delay": {"analysis_s": 5}
+    }
+  ],
+  "merge": {
+    "timeline": "union",
+    "experiment_origin": "2026-01-01T00:00:00Z",
+    "continuous_method": "linear",
+    "stepwise_method": "previous",
+    "exact_tolerance_s": 1e-9
+  }
+}
