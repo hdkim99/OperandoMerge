@@ -2,81 +2,196 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: operandomerge-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  quality:
-    name: Lint and type check
-    runs-on: ubuntu-latest
+  required:
+    name: CI / required
+    # Public fork PR code must never execute on the private DGX runner.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, dgx-spark]
+    timeout-minutes: 60
+    env:
+      PIP_NO_CACHE_DIR: "1"
+      MPLBACKEND: Agg
+      CI_ENV_NAME: operandomerge-${{ github.run_id }}-${{ github.run_attempt }}-required-venv
+      CI_WHEEL_ENV_NAME: operandomerge-${{ github.run_id }}-${{ github.run_attempt }}-wheel-venv
+      CI_OUTPUT_NAME: operandomerge-${{ github.run_id }}-${{ github.run_attempt }}-output
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          clean: true
+          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.12"
-          cache: pip
-      - run: python -m pip install -e '.[dev]'
-      - run: ruff check .
-      - run: mypy src
+          python-version: "3.14"
+      - name: Verify DGX ARM64 runner
+        run: >-
+          python -c
+          "import platform; machine = platform.machine().lower();
+          assert machine in {'aarch64', 'arm64'}, machine;
+          print(platform.platform(), machine)"
+      - name: Create isolated job environment
+        run: python -m venv "$RUNNER_TEMP/$CI_ENV_NAME"
+      - name: Install project and ARM64 wheels
+        run: |
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pip install --only-binary=:all: -e ".[dev]" twine
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pip check
+      - name: Check formatting
+        run: >-
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m ruff format --check .
+      - name: Lint
+        run: >-
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m ruff check .
+      - name: Type check
+        run: >-
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m mypy src
+      - name: Unit, integration, scientific, and workflow tests
+        run: >-
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pytest
+      - name: Build and verify distributions
+        run: |
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m build
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m twine check --strict dist/*
+      - name: Install wheel in a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME"
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -m pip install --only-binary=:all: dist/*.whl
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -m pip check
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -c "import importlib.metadata as m, operandomerge; assert operandomerge.__version__ == m.version('operandomerge'); print(operandomerge.__version__)"
+      - name: Exercise installed CLI and examples
+        run: |
+          mkdir -p "$RUNNER_TEMP/$CI_OUTPUT_NAME/showcase"
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/operandomerge" --help
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/operandomerge" --version
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/operandomerge" inspect examples/reactor_logger.csv
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/operandomerge" merge examples/example-config.json --excel "$RUNNER_TEMP/$CI_OUTPUT_NAME/report.xlsx" --plot "$RUNNER_TEMP/$CI_OUTPUT_NAME/alignment.png"
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" examples/showcase/generate_showcase.py --output-dir "$RUNNER_TEMP/$CI_OUTPUT_NAME/showcase"
+          test -s "$RUNNER_TEMP/$CI_OUTPUT_NAME/report.xlsx"
+          test -s "$RUNNER_TEMP/$CI_OUTPUT_NAME/alignment.png"
+          test -s "$RUNNER_TEMP/$CI_OUTPUT_NAME/showcase/operandomerge-showcase.xlsx"
+          test -s "$RUNNER_TEMP/$CI_OUTPUT_NAME/showcase/before-after.png"
+      - name: Exercise installed GUI headlessly
+        run: |
+          command -v xvfb-run
+          "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -c "import tkinter"
+          xvfb-run -a "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -c "from operandomerge.gui import create_app; root, app = create_app(); root.update(); root.destroy()"
+      - name: Remove isolated environments and generated files
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import shutil
 
-  test:
-    name: Test Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+          runner_temp = pathlib.Path(os.environ["RUNNER_TEMP"]).resolve()
+          temp_targets = [
+              (runner_temp / os.environ[name]).resolve()
+              for name in ("CI_ENV_NAME", "CI_WHEEL_ENV_NAME", "CI_OUTPUT_NAME")
+          ]
+          if not all(target.parent == runner_temp for target in temp_targets):
+              raise RuntimeError("Refusing to remove a path outside RUNNER_TEMP")
+          for target in temp_targets:
+              shutil.rmtree(target, ignore_errors=True)
+
+          workspace = pathlib.Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          relative_targets = (
+              "dist",
+              "build",
+              ".pytest_cache",
+              ".mypy_cache",
+              ".ruff_cache",
+              ".coverage",
+              "src/operandomerge.egg-info",
+          )
+          workspace_targets = [(workspace / relative).resolve() for relative in relative_targets]
+          workspace_targets.extend(path.resolve() for path in workspace.rglob("__pycache__"))
+          for target in workspace_targets:
+              if workspace not in target.parents:
+                  raise RuntimeError("Refusing to remove a path outside GITHUB_WORKSPACE")
+              if target.is_dir():
+                  shutil.rmtree(target)
+              elif target.exists():
+                  target.unlink()
+          PY
+          test -z "$(git status --porcelain)"
+
+  python-compatibility:
+    name: CI / Python ${{ matrix.python }} compatibility
+    # Apply the same fork-PR security boundary to every DGX job.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, dgx-spark]
+    timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        python: ["3.10", "3.12"]
+    env:
+      PIP_NO_CACHE_DIR: "1"
+      MPLBACKEND: Agg
+      CI_ENV_NAME: operandomerge-${{ github.run_id }}-${{ github.run_attempt }}-python-${{ matrix.python }}-venv
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          clean: true
+          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-      - run: python -m pip install -e '.[dev]'
-      - run: pytest
-      - run: operandomerge inspect examples/reactor_logger.csv
-      - run: operandomerge merge examples/example-config.json --excel /tmp/report.xlsx --plot /tmp/alignment.png
-      - run: test -s /tmp/report.xlsx && test -s /tmp/alignment.png
-      - if: matrix.python-version == '3.12'
-        run: >-
-          python examples/showcase/generate_showcase.py
-          --output-dir /tmp/operandomerge-showcase
-      - if: matrix.python-version == '3.12'
-        run: >-
-          test -s /tmp/operandomerge-showcase/operandomerge-showcase.xlsx &&
-          test -s /tmp/operandomerge-showcase/before-after.png &&
-          test -s docs/images/showcase-before-after.png &&
-          test -s docs/images/social-preview.png
-      - if: matrix.python-version == '3.12'
-        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
-      - if: matrix.python-version == '3.12'
-        run: >-
-          xvfb-run -a python -c
-          "from operandomerge.gui import create_app;
-          root, app = create_app(); root.update(); root.destroy()"
+          python-version: ${{ matrix.python }}
+      - name: Create isolated compatibility environment
+        run: python -m venv "$RUNNER_TEMP/$CI_ENV_NAME"
+      - name: Install and test the supported Python version
+        run: |
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pip install --only-binary=:all: -e ".[dev]"
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pytest
+          "$RUNNER_TEMP/$CI_ENV_NAME/bin/python" -m pip check
+      - name: Remove isolated compatibility environment
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import shutil
 
-  package:
-    name: Build and clean-install package
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: "3.12"
-          cache: pip
-      - run: python -m pip install build
-      - run: python -m build
-      - run: python -m venv /tmp/operandomerge-clean
-      - run: /tmp/operandomerge-clean/bin/pip install dist/*.whl
-      - run: /tmp/operandomerge-clean/bin/operandomerge --version
+          runner_temp = pathlib.Path(os.environ["RUNNER_TEMP"]).resolve()
+          target = (runner_temp / os.environ["CI_ENV_NAME"]).resolve()
+          if target.parent != runner_temp:
+              raise RuntimeError("Refusing to remove a path outside RUNNER_TEMP")
+          shutil.rmtree(target, ignore_errors=True)
+
+          workspace = pathlib.Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          relative_targets = (".pytest_cache", "src/operandomerge.egg-info")
+          workspace_targets = [(workspace / relative).resolve() for relative in relative_targets]
+          workspace_targets.extend(path.resolve() for path in workspace.rglob("__pycache__"))
+          for workspace_target in workspace_targets:
+              if workspace not in workspace_target.parents:
+                  raise RuntimeError("Refusing to remove a path outside GITHUB_WORKSPACE")
+              if workspace_target.is_dir():
+                  shutil.rmtree(workspace_target)
+              elif workspace_target.exists():
+                  workspace_target.unlink()
+          PY
+          test -z "$(git status --porcelain)"
