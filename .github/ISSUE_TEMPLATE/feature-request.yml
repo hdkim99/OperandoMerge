@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a change backed by a concrete research workflow.
+title: "feature: "
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Research workflow requiring this feature
+    validations:
+      required: true
+  - type: input
+    id: instrument
+    attributes:
+      label: Instruments or data formats involved
+  - type: input
+    id: public_data
+    attributes:
+      label: Public example dataset DOI / URL
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current manual workaround
+    validations:
+      required: true
+  - type: textarea
+    id: interpretation
+    attributes:
+      label: Scientific interpretation impact
+      description: Explain whether this changes clocks, offsets, delays, interpolation, or provenance.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Public-data safety
+      options:
+        - label: I included no confidential research data, personal information, credentials, or proprietary files.
+          required: true

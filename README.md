@@ -3,6 +3,7 @@
 > Heterogeneous instruments. One reproducible experiment timeline.
 
 [![CI](https://github.com/hdkim99/OperandoMerge/actions/workflows/ci.yml/badge.svg)](https://github.com/hdkim99/OperandoMerge/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/operandomerge)](https://pypi.org/project/operandomerge/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://github.com/hdkim99/OperandoMerge/blob/main/LICENSE)
 
@@ -34,6 +35,9 @@ python -m pip install -e '.[dev]'
 ```
 
 ## 30-second showcase
+
+From the source checkout created above, run the representative five-instrument
+workflow with the installed CLI:
 
 ```bash
 mkdir -p showcase-output
@@ -68,6 +72,17 @@ operandomerge-gui
 Python's Tk bindings are included with python.org installers. Some distro or
 Homebrew Python builds require their matching optional Tk package, such as
 `python3-tk` on Debian/Ubuntu.
+
+## Selected public real-data validation
+
+OperandoMerge has been exercised against checksum-pinned, same-run GC/MS exports
+from [Zenodo DOI 10.5281/zenodo.21884075](https://doi.org/10.5281/zenodo.21884075).
+The executed validation preserves 64 and 255 sparse GC injections without filling
+between them, aligns the accompanying MS clocks as documented local elapsed time,
+and compares API, CLI, and GUI-controller exports. No timezone or physical delay is
+inferred because the deposited source does not provide that evidence. Exact members,
+licenses, checksums, observed cadences, transformations, results, and limitations are
+in the [public-data source register](https://github.com/hdkim99/OperandoMerge/blob/main/docs/public-data-sources.md).
 
 ## What is being aligned?
 

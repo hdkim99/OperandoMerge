@@ -1,0 +1,66 @@
+name: Real dataset compatibility
+description: Report a laboratory export or public multi-instrument dataset that cannot be processed as documented.
+title: "compatibility: "
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach confidential, unpublished, proprietary, sensitive, or licensed raw files. Share a sanitized header/time schema or minimal synthetic reproducer.
+  - type: input
+    id: version
+    attributes:
+      label: Project version
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python version, operating system, and installation method
+    validations:
+      required: true
+  - type: input
+    id: instruments
+    attributes:
+      label: Instruments / vendors
+      description: Omit serial numbers and institutional identifiers.
+    validations:
+      required: true
+  - type: input
+    id: file_types
+    attributes:
+      label: Input file types and time representations
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior and sanitized error message
+    validations:
+      required: true
+  - type: dropdown
+    id: shareable
+    attributes:
+      label: Can the data be shared publicly under clear redistribution terms?
+      options: [Yes, No, Unsure]
+    validations:
+      required: true
+  - type: input
+    id: public_source
+    attributes:
+      label: Public dataset DOI / URL, if applicable
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Minimal reproducer or sanitized header/time schema
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Public-data safety
+      options:
+        - label: I uploaded no confidential data, personal information, credentials, proprietary files, or internal paths.
+          required: true

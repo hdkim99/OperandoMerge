@@ -1,0 +1,66 @@
+name: Bug report
+description: Report reproducible incorrect software behavior.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: Do not upload unpublished, confidential, proprietary, licensed, identifying, or sensitive research data. Never include credentials or internal paths.
+  - type: input
+    id: version
+    attributes:
+      label: OperandoMerge version
+      placeholder: "operandomerge --version"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Linux, macOS, Windows, Other]
+    validations:
+      required: true
+  - type: input
+    id: installation
+    attributes:
+      label: Installation method
+      placeholder: "PyPI, editable source install, or other"
+    validations:
+      required: true
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      options: [CLI, GUI, Python API]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior and sanitized error message
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Minimal synthetic or redistributable reproducer
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Public-data safety
+      options:
+        - label: I included no private data, credentials, internal paths, or identifying metadata.
+          required: true
