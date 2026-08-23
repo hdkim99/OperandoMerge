@@ -3,53 +3,25 @@
 from __future__ import annotations
 
 import tkinter as tk
+from collections.abc import Callable
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Callable
 
 import matplotlib.pyplot as plt
 
-from operandomerge.config import load_config, save_config
-from operandomerge.export import export_excel, plot_alignment
+from operandomerge.controller import GuiController
+from operandomerge.export import plot_alignment
 from operandomerge.io import inspect_columns
 from operandomerge.models import (
     AlignmentConfig,
     AlignmentMethod,
     ChannelConfig,
-    DataType,
     DatasetConfig,
+    DataType,
     DelayConfig,
     MergeConfig,
-    MergeResult,
     TimeRepresentation,
 )
-from operandomerge.service import MergeService
-
-
-class GuiController:
-    """Testable GUI application layer; scientific work remains in MergeService."""
-
-    def __init__(self, service: MergeService | None = None) -> None:
-        self.service = service or MergeService()
-        self.datasets: list[DatasetConfig] = []
-        self.merge_config = MergeConfig()
-        self.result: MergeResult | None = None
-
-    def run_merge(self) -> MergeResult:
-        self.result = self.service.run(self.datasets, self.merge_config)
-        return self.result
-
-    def export(self, path: Path) -> None:
-        if self.result is None:
-            raise ValueError("Run a merge before exporting")
-        export_excel(self.result, path)
-
-    def load(self, path: Path) -> None:
-        self.datasets, self.merge_config = load_config(path)
-        self.result = None
-
-    def save(self, path: Path) -> None:
-        save_config(self.datasets, self.merge_config, path)
 
 
 class DatasetDialog(tk.Toplevel):
@@ -70,19 +42,27 @@ class DatasetDialog(tk.Toplevel):
         columns = inspect_columns(path)
         self.column_names = columns
         self.name_var = tk.StringVar(value=existing.dataset_name if existing else path.stem)
-        self.time_var = tk.StringVar(value=existing.time_column if existing else _guess_time(columns))
+        self.time_var = tk.StringVar(
+            value=existing.time_column if existing else _guess_time(columns)
+        )
         self.representation_var = tk.StringVar(
-            value=existing.time_representation.value if existing else TimeRepresentationChoice(columns)
+            value=existing.time_representation.value if existing else _guess_representation(columns)
         )
         self.alignment_var = tk.StringVar(
             value=existing.alignment.method.value if existing else AlignmentMethod.ELAPSED.value
         )
-        self.offset_var = tk.StringVar(value=str(existing.alignment.manual_offset_s if existing else 0.0))
+        self.offset_var = tk.StringVar(
+            value=str(existing.alignment.manual_offset_s if existing else 0.0)
+        )
         self.source_event_var = tk.StringVar(
-            value="" if existing is None or existing.alignment.source_event_time_s is None else str(existing.alignment.source_event_time_s)
+            value=""
+            if existing is None or existing.alignment.source_event_time_s is None
+            else str(existing.alignment.source_event_time_s)
         )
         self.target_event_var = tk.StringVar(
-            value="" if existing is None or existing.alignment.target_event_time_s is None else str(existing.alignment.target_event_time_s)
+            value=""
+            if existing is None or existing.alignment.target_event_time_s is None
+            else str(existing.alignment.target_event_time_s)
         )
         delay = existing.delay if existing else DelayConfig()
         self.delay_vars = {
@@ -93,7 +73,7 @@ class DatasetDialog(tk.Toplevel):
             "analysis_s": tk.StringVar(value=str(delay.analysis_s)),
         }
         self._build(existing)
-        self.transient(parent)
+        self.transient(parent.winfo_toplevel())
         self.grab_set()
 
     def _build(self, existing: DatasetConfig | None) -> None:
@@ -104,14 +84,29 @@ class DatasetDialog(tk.Toplevel):
         form.columnconfigure(1, weight=1)
         fields = [
             ("Dataset name", ttk.Entry(form, textvariable=self.name_var)),
-            ("Time column", ttk.Combobox(form, textvariable=self.time_var, values=self.column_names, state="readonly")),
+            (
+                "Time column",
+                ttk.Combobox(
+                    form, textvariable=self.time_var, values=self.column_names, state="readonly"
+                ),
+            ),
             (
                 "Time representation",
-                ttk.Combobox(form, textvariable=self.representation_var, values=[item.value for item in TimeRepresentation], state="readonly"),
+                ttk.Combobox(
+                    form,
+                    textvariable=self.representation_var,
+                    values=[item.value for item in TimeRepresentation],
+                    state="readonly",
+                ),
             ),
             (
                 "Alignment",
-                ttk.Combobox(form, textvariable=self.alignment_var, values=[item.value for item in AlignmentMethod], state="readonly"),
+                ttk.Combobox(
+                    form,
+                    textvariable=self.alignment_var,
+                    values=[item.value for item in AlignmentMethod],
+                    state="readonly",
+                ),
             ),
             ("Manual offset / s", ttk.Entry(form, textvariable=self.offset_var)),
             ("Source event time / s", ttk.Entry(form, textvariable=self.source_event_var)),
@@ -122,19 +117,31 @@ class DatasetDialog(tk.Toplevel):
             ttk.Label(form, text=label).grid(row=row, column=0, sticky="w", padx=(0, 8), pady=3)
             widget.grid(row=row, column=1, sticky="ew", pady=3)
             row += 1
-        ttk.Label(form, text="Positive delays are subtracted from reported time.").grid(row=row, columnspan=2, sticky="w", pady=(8, 2))
+        ttk.Label(form, text="Positive delays are subtracted from reported time.").grid(
+            row=row, columnspan=2, sticky="w", pady=(8, 2)
+        )
         row += 1
         for name, variable in self.delay_vars.items():
-            ttk.Label(form, text=name.replace("_s", " delay / s").replace("_", " ").title()).grid(row=row, column=0, sticky="w", pady=3)
+            ttk.Label(form, text=name.replace("_s", " delay / s").replace("_", " ").title()).grid(
+                row=row, column=0, sticky="w", pady=3
+            )
             ttk.Entry(form, textvariable=variable).grid(row=row, column=1, sticky="ew", pady=3)
             row += 1
-        ttk.Label(form, text="Channels — one per line: source_column, data_type, optional_output_name").grid(row=row, columnspan=2, sticky="w", pady=(10, 3))
+        ttk.Label(
+            form, text="Channels — one per line: source_column, data_type, optional_output_name"
+        ).grid(row=row, columnspan=2, sticky="w", pady=(10, 3))
         row += 1
         self.channels_text = tk.Text(form, width=60, height=10)
         self.channels_text.grid(row=row, columnspan=2, sticky="nsew")
         form.rowconfigure(row, weight=1)
-        channels = existing.channels if existing else tuple(
-            ChannelConfig(column) for column in self.column_names if column != self.time_var.get()
+        channels = (
+            existing.channels
+            if existing
+            else tuple(
+                ChannelConfig(column)
+                for column in self.column_names
+                if column != self.time_var.get()
+            )
         )
         channel_lines = [
             f"{channel.source_column}, {channel.data_type.value}"
@@ -159,7 +166,11 @@ class DatasetDialog(tk.Toplevel):
                     raise ValueError(f"Invalid channel mapping line: {line!r}")
                 if parts[0] not in self.column_names:
                     raise ValueError(f"Unknown source column {parts[0]!r}")
-                channels.append(ChannelConfig(parts[0], DataType(parts[1]), parts[2] or None if len(parts) == 3 else None))
+                channels.append(
+                    ChannelConfig(
+                        parts[0], DataType(parts[1]), parts[2] or None if len(parts) == 3 else None
+                    )
+                )
             config = DatasetConfig(
                 path=self.path,
                 name=self.name_var.get().strip() or self.path.stem,
@@ -172,7 +183,9 @@ class DatasetDialog(tk.Toplevel):
                     source_event_time_s=_optional_gui_float(self.source_event_var.get()),
                     target_event_time_s=_optional_gui_float(self.target_event_var.get()),
                 ),
-                delay=DelayConfig(**{name: float(variable.get()) for name, variable in self.delay_vars.items()}),
+                delay=DelayConfig(
+                    **{name: float(variable.get()) for name, variable in self.delay_vars.items()}
+                ),
             )
             config.validate()
         except (TypeError, ValueError) as error:
@@ -190,6 +203,7 @@ class OperandoMergeApp(ttk.Frame):
         self.status = tk.StringVar(value="Add CSV/XLSX datasets to begin.")
         self.timeline_var = tk.StringVar(value="union")
         self.reference_var = tk.StringVar()
+        self.origin_var = tk.StringVar()
         self.continuous_var = tk.StringVar(value="linear")
         self._build()
         self.refresh()
@@ -210,7 +224,12 @@ class OperandoMergeApp(ttk.Frame):
             ("Save config", self.save_config),
         ]:
             ttk.Button(toolbar, text=text, command=command).pack(side="left", padx=(0, 5))
-        self.tree = ttk.Treeview(self, columns=("file", "time", "representation", "channels", "offset", "delay"), show="headings", height=10)
+        self.tree = ttk.Treeview(
+            self,
+            columns=("file", "time", "representation", "channels", "offset", "delay"),
+            show="headings",
+            height=10,
+        )
         for column, label in [
             ("file", "Dataset / file"),
             ("time", "Time column"),
@@ -226,16 +245,34 @@ class OperandoMergeApp(ttk.Frame):
         settings = ttk.LabelFrame(self, text="Merge policy", padding=8)
         settings.grid(row=2, column=0, sticky="ew", pady=8)
         ttk.Label(settings, text="Timeline").pack(side="left")
-        ttk.Combobox(settings, textvariable=self.timeline_var, values=["union", "reference"], width=10, state="readonly").pack(side="left", padx=5)
+        ttk.Combobox(
+            settings,
+            textvariable=self.timeline_var,
+            values=["union", "reference"],
+            width=10,
+            state="readonly",
+        ).pack(side="left", padx=5)
         ttk.Label(settings, text="Reference dataset").pack(side="left", padx=(8, 0))
-        self.reference_combo = ttk.Combobox(settings, textvariable=self.reference_var, width=16, state="readonly")
+        self.reference_combo = ttk.Combobox(
+            settings, textvariable=self.reference_var, width=16, state="readonly"
+        )
         self.reference_combo.pack(side="left", padx=5)
+        ttk.Label(settings, text="Absolute origin").pack(side="left", padx=(8, 0))
+        ttk.Entry(settings, textvariable=self.origin_var, width=22).pack(side="left", padx=5)
         ttk.Label(settings, text="Continuous").pack(side="left", padx=(8, 0))
-        ttk.Combobox(settings, textvariable=self.continuous_var, values=["linear", "nearest", "none"], width=9, state="readonly").pack(side="left", padx=5)
+        ttk.Combobox(
+            settings,
+            textvariable=self.continuous_var,
+            values=["linear", "nearest", "none"],
+            width=9,
+            state="readonly",
+        ).pack(side="left", padx=5)
         actions = ttk.Frame(self)
         actions.grid(row=3, column=0, sticky="ew")
         ttk.Button(actions, text="Merge", command=self.merge).pack(side="left")
-        ttk.Button(actions, text="Preview alignment", command=self.preview).pack(side="left", padx=5)
+        ttk.Button(actions, text="Preview alignment", command=self.preview).pack(
+            side="left", padx=5
+        )
         ttk.Button(actions, text="Export Excel", command=self.export).pack(side="left")
         ttk.Label(actions, textvariable=self.status).pack(side="right")
 
@@ -280,7 +317,9 @@ class OperandoMergeApp(ttk.Frame):
             return
         index = int(selection[0])
         existing = self.controller.datasets[index]
-        DatasetDialog(self, existing.path, lambda config: self._replace_dataset(index, config), existing)
+        DatasetDialog(
+            self, existing.path, lambda config: self._replace_dataset(index, config), existing
+        )
 
     def _replace_dataset(self, index: int, config: DatasetConfig) -> None:
         self.controller.datasets[index] = config
@@ -298,6 +337,7 @@ class OperandoMergeApp(ttk.Frame):
         self.controller.merge_config = MergeConfig(
             timeline=self.timeline_var.get(),
             reference_dataset=self.reference_var.get() or None,
+            experiment_origin=self.origin_var.get() or None,
             continuous_method=self.continuous_var.get(),
         )
 
@@ -324,7 +364,9 @@ class OperandoMergeApp(ttk.Frame):
             self.merge()
         if self.controller.result is None:
             return
-        destination = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
+        destination = filedialog.asksaveasfilename(
+            defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")]
+        )
         if destination:
             self.controller.export(Path(destination))
             self.status.set(f"Exported {destination}")
@@ -340,12 +382,15 @@ class OperandoMergeApp(ttk.Frame):
             return
         self.timeline_var.set(self.controller.merge_config.timeline)
         self.reference_var.set(self.controller.merge_config.reference_dataset or "")
+        self.origin_var.set(self.controller.merge_config.experiment_origin or "")
         self.continuous_var.set(self.controller.merge_config.continuous_method)
         self.refresh()
 
     def save_config(self) -> None:
         self._sync_merge_config()
-        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON config", "*.json")])
+        path = filedialog.asksaveasfilename(
+            defaultextension=".json", filetypes=[("JSON config", "*.json")]
+        )
         if path:
             self.controller.save(Path(path))
             self.status.set(f"Saved configuration {path}")
@@ -358,7 +403,7 @@ def _guess_time(columns: list[str]) -> str:
     return columns[0] if columns else ""
 
 
-def TimeRepresentationChoice(columns: list[str]) -> str:
+def _guess_representation(columns: list[str]) -> str:
     guessed = _guess_time(columns).lower()
     if "min" in guessed:
         return TimeRepresentation.ELAPSED_MINUTES.value

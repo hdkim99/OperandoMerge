@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import matplotlib.pyplot as plt
 
@@ -81,4 +81,3 @@ def _sheet_value(value: object) -> str | int | None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

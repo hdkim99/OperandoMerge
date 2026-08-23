@@ -16,7 +16,7 @@ from operandomerge.models import DatasetConfig, NormalizedDataset, TimeRepresent
 
 
 def parse_absolute(series: pd.Series) -> pd.Series:
-    parsed = pd.to_datetime(series, errors="coerce", utc=True)
+    parsed = pd.to_datetime(series, errors="coerce", utc=True, format="mixed")
     if parsed.isna().any():
         rows = parsed.index[parsed.isna()].tolist()[:5]
         raise ValueError(f"Unparseable absolute timestamp at row(s) {rows}")
@@ -48,10 +48,20 @@ def parse_local_clock(series: pd.Series) -> np.ndarray:
         if values[index] + day_shift < unwrapped[index - 1] - 43200.0:
             day_shift += 86400.0
         unwrapped[index] = values[index] + day_shift
-    return unwrapped - unwrapped[0]
+    return np.asarray(unwrapped - unwrapped[0], dtype=np.float64)
 
 
-def discover_absolute_origin(configs: list[DatasetConfig]) -> pd.Timestamp | None:
+def discover_absolute_origin(
+    configs: list[DatasetConfig], explicit_origin: str | None = None
+) -> pd.Timestamp | None:
+    if explicit_origin is not None:
+        try:
+            parsed_origin = pd.to_datetime(explicit_origin, utc=True)
+        except (TypeError, ValueError) as error:
+            raise ValueError("experiment_origin must be an ISO-8601 timestamp") from error
+        if not isinstance(parsed_origin, pd.Timestamp):
+            raise ValueError("experiment_origin must be a single timestamp")
+        return parsed_origin
     starts: list[pd.Timestamp] = []
     for config in configs:
         if config.time_representation not in {
@@ -68,7 +78,9 @@ def discover_absolute_origin(configs: list[DatasetConfig]) -> pd.Timestamp | Non
     return min(starts) if starts else None
 
 
-def normalize_dataset(config: DatasetConfig, absolute_origin: pd.Timestamp | None) -> NormalizedDataset:
+def normalize_dataset(
+    config: DatasetConfig, absolute_origin: pd.Timestamp | None
+) -> NormalizedDataset:
     """Normalize one dataset without discarding the original timestamp or any input row."""
 
     from operandomerge.io import read_table
@@ -121,8 +133,9 @@ def normalize_dataset(config: DatasetConfig, absolute_origin: pd.Timestamp | Non
         channels=config.channels,
         time_column=config.time_column,
         time_representation=representation,
+        alignment=config.alignment,
+        delay=config.delay,
         applied_offset_s=offset_s,
         total_delay_s=delay_s,
         absolute_origin=local_origin,
     )
-

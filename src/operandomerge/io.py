@@ -25,4 +25,3 @@ def read_table(path: Path, sheet_name: str | int | None = 0) -> pd.DataFrame:
 
 def inspect_columns(path: Path, sheet_name: str | int | None = 0) -> list[str]:
     return list(read_table(path, sheet_name).columns.astype(str))
-

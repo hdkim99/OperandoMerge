@@ -8,6 +8,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.figure import Figure
 
 from operandomerge.models import MergeResult
 
@@ -21,7 +22,10 @@ def qc_frame(result: MergeResult) -> pd.DataFrame:
 
 def configuration_frame(configuration: dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame(
-        [{"setting": key, "value": json.dumps(value) if value is not None else ""} for key, value in configuration.items()]
+        [
+            {"setting": key, "value": json.dumps(value) if value is not None else ""}
+            for key, value in configuration.items()
+        ]
     )
 
 
@@ -32,7 +36,9 @@ def export_excel(result: MergeResult, path: Path) -> None:
         result.metadata.to_excel(writer, sheet_name="metadata", index=False)
         result.provenance.to_excel(writer, sheet_name="provenance", index=False)
         qc_frame(result).to_excel(writer, sheet_name="qc", index=False)
-        configuration_frame(result.configuration).to_excel(writer, sheet_name="configuration", index=False)
+        configuration_frame(result.configuration).to_excel(
+            writer, sheet_name="configuration", index=False
+        )
 
 
 def export_csv_bundle(result: MergeResult, directory: Path) -> None:
@@ -44,7 +50,7 @@ def export_csv_bundle(result: MergeResult, directory: Path) -> None:
     configuration_frame(result.configuration).to_csv(directory / "configuration.csv", index=False)
 
 
-def plot_alignment(result: MergeResult, path: Path | None = None) -> plt.Figure:
+def plot_alignment(result: MergeResult, path: Path | None = None) -> Figure:
     figure, axis = plt.subplots(figsize=(9, 5), constrained_layout=True)
     time = result.merged["experiment_time_s"]
     for column in result.merged.columns[1:]:

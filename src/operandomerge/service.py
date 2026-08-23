@@ -14,7 +14,7 @@ class MergeService:
         if not datasets:
             raise ValueError("At least one dataset configuration is required")
         merge_config = merge or MergeConfig()
-        absolute_origin = discover_absolute_origin(datasets)
+        merge_config.validate()
+        absolute_origin = discover_absolute_origin(datasets, merge_config.experiment_origin)
         normalized = [normalize_dataset(config, absolute_origin) for config in datasets]
         return merge_datasets(normalized, merge_config)
-

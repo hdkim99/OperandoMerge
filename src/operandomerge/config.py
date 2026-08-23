@@ -11,10 +11,11 @@ from operandomerge.models import (
     AlignmentConfig,
     AlignmentMethod,
     ChannelConfig,
-    DataType,
     DatasetConfig,
+    DataType,
     DelayConfig,
     MergeConfig,
+    TimeRepresentation,
 )
 
 
@@ -67,6 +68,7 @@ def load_config(path: Path) -> tuple[list[DatasetConfig], MergeConfig]:
     merge = MergeConfig(
         timeline=merge_raw.get("timeline", "union"),
         reference_dataset=merge_raw.get("reference_dataset"),
+        experiment_origin=merge_raw.get("experiment_origin"),
         continuous_method=merge_raw.get("continuous_method", "linear"),
         stepwise_method=merge_raw.get("stepwise_method", "previous"),
         exact_tolerance_s=float(merge_raw.get("exact_tolerance_s", 1e-9)),
@@ -90,4 +92,3 @@ def config_as_dict(datasets: list[DatasetConfig], merge: MergeConfig) -> dict[st
 def save_config(datasets: list[DatasetConfig], merge: MergeConfig, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(config_as_dict(datasets, merge), indent=2), encoding="utf-8")
-

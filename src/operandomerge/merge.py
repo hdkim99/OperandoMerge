@@ -16,7 +16,9 @@ from operandomerge.models import DataType, MergeConfig, MergeResult, NormalizedD
 from operandomerge.qc import inspect_dataset
 
 
-def _deduplicated_numeric(dataset: NormalizedDataset, column: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _deduplicated_numeric(
+    dataset: NormalizedDataset, column: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     work = dataset.frame[["experiment_time_s", "source_row", column]].copy()
     work[column] = pd.to_numeric(work[column], errors="coerce")
     work = work.dropna(subset=[column]).sort_values(["experiment_time_s", "source_row"])
@@ -46,27 +48,30 @@ def _resample(
     target_t: np.ndarray,
     data_type: DataType,
     config: MergeConfig,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     values = np.full(len(target_t), np.nan, dtype=float)
     methods = np.full(len(target_t), "missing", dtype=object)
-    source_indices = np.full(len(target_t), -1, dtype=int)
+    source_left = np.full(len(target_t), -1, dtype=int)
+    source_right = np.full(len(target_t), -1, dtype=int)
     if len(source_t) == 0:
-        return values, methods, source_indices
+        return values, methods, source_left, source_right
     exact = _exact_indices(source_t, target_t, config.exact_tolerance_s)
     exact_mask = exact >= 0
     values[exact_mask] = source_y[exact[exact_mask]]
     methods[exact_mask] = "original"
-    source_indices[exact_mask] = exact[exact_mask]
+    source_left[exact_mask] = exact[exact_mask]
+    source_right[exact_mask] = exact[exact_mask]
 
     remaining = ~exact_mask
     if data_type in {DataType.EVENT, DataType.DISCRETE_SAMPLE} or not remaining.any():
-        return values, methods, source_indices
+        return values, methods, source_left, source_right
     in_domain = remaining & (target_t >= source_t[0]) & (target_t <= source_t[-1])
     if data_type is DataType.CONTINUOUS and config.continuous_method == "linear":
         values[in_domain] = np.interp(target_t[in_domain], source_t, source_y)
         methods[in_domain] = "linear"
         right = np.searchsorted(source_t, target_t[in_domain], side="left")
-        source_indices[in_domain] = np.clip(right, 0, len(source_t) - 1)
+        source_left[in_domain] = np.clip(right - 1, 0, len(source_t) - 1)
+        source_right[in_domain] = np.clip(right, 0, len(source_t) - 1)
     elif data_type is DataType.CONTINUOUS and config.continuous_method == "nearest":
         targets = target_t[in_domain]
         right = np.searchsorted(source_t, targets, side="left")
@@ -76,20 +81,24 @@ def _resample(
         chosen = np.where(choose_right, right, left)
         values[in_domain] = source_y[chosen]
         methods[in_domain] = "nearest"
-        source_indices[in_domain] = chosen
+        source_left[in_domain] = chosen
+        source_right[in_domain] = chosen
     elif data_type is DataType.STEPWISE and config.stepwise_method == "previous":
         chosen = np.searchsorted(source_t, target_t[in_domain], side="right") - 1
         values[in_domain] = source_y[chosen]
         methods[in_domain] = "previous"
-        source_indices[in_domain] = chosen
-    return values, methods, source_indices
+        source_left[in_domain] = chosen
+        source_right[in_domain] = chosen
+    return values, methods, source_left, source_right
 
 
 def _target_timeline(datasets: list[NormalizedDataset], config: MergeConfig) -> np.ndarray:
     if config.timeline == "reference":
         matches = [dataset for dataset in datasets if dataset.name == config.reference_dataset]
         if len(matches) != 1:
-            raise ValueError(f"Reference dataset {config.reference_dataset!r} was not found uniquely")
+            raise ValueError(
+                f"Reference dataset {config.reference_dataset!r} was not found uniquely"
+            )
         values = matches[0].frame["experiment_time_s"].to_numpy(dtype=float)
     else:
         values = np.concatenate(
@@ -119,22 +128,41 @@ def merge_datasets(datasets: list[NormalizedDataset], config: MergeConfig) -> Me
                 "source_file": str(dataset.source_file),
                 "time_column": dataset.time_column,
                 "time_representation": dataset.time_representation.value,
+                "alignment_method": dataset.alignment.method.value,
                 "applied_offset_s": dataset.applied_offset_s,
+                "source_event_time_s": dataset.alignment.source_event_time_s,
+                "target_event_time_s": dataset.alignment.target_event_time_s,
+                "manual_delay_s": dataset.delay.manual_s,
+                "sampling_delay_s": dataset.delay.sampling_s,
+                "transport_delay_s": dataset.delay.transport_s,
+                "dead_volume_delay_s": dataset.delay.dead_volume_s,
+                "analysis_delay_s": dataset.delay.analysis_s,
                 "total_delay_s": dataset.total_delay_s,
-                "absolute_origin": dataset.absolute_origin.isoformat() if dataset.absolute_origin is not None else None,
+                "absolute_origin": dataset.absolute_origin.isoformat()
+                if dataset.absolute_origin is not None
+                else None,
             }
         )
         for channel in dataset.channels:
             source_t, source_y, source_rows = _deduplicated_numeric(dataset, channel.source_column)
-            values, methods, source_index = _resample(source_t, source_y, target, channel.data_type, config)
+            values, methods, source_left, source_right = _resample(
+                source_t, source_y, target, channel.data_type, config
+            )
             output = channel.output_name or f"{dataset.name}__{channel.source_column}"
             if output in merged:
                 raise ValueError(f"Duplicate output channel name {output!r}")
             merged[output] = values
             for target_index in np.flatnonzero(~pd.isna(values)):
-                dedup_index = int(source_index[target_index])
-                source_row = int(source_rows[dedup_index])
-                raw_row = dataset.frame.loc[dataset.frame["source_row"] == source_row].iloc[-1]
+                left_dedup_index = int(source_left[target_index])
+                right_dedup_index = int(source_right[target_index])
+                left_row_number = int(source_rows[left_dedup_index])
+                right_row_number = int(source_rows[right_dedup_index])
+                left_raw_row = dataset.frame.loc[
+                    dataset.frame["source_row"] == left_row_number
+                ].iloc[-1]
+                right_raw_row = dataset.frame.loc[
+                    dataset.frame["source_row"] == right_row_number
+                ].iloc[-1]
                 provenance_rows.append(
                     {
                         "output_column": output,
@@ -142,8 +170,18 @@ def merge_datasets(datasets: list[NormalizedDataset], config: MergeConfig) -> Me
                         "value": float(values[target_index]),
                         "source_file": str(dataset.source_file),
                         "source_column": channel.source_column,
-                        "source_row": source_row,
-                        "original_timestamp": raw_row["original_timestamp"],
+                        "source_row": (
+                            left_row_number if left_row_number == right_row_number else None
+                        ),
+                        "original_timestamp": (
+                            left_raw_row["original_timestamp"]
+                            if left_row_number == right_row_number
+                            else None
+                        ),
+                        "source_row_left": left_row_number,
+                        "source_row_right": right_row_number,
+                        "original_timestamp_left": left_raw_row["original_timestamp"],
+                        "original_timestamp_right": right_raw_row["original_timestamp"],
                         "applied_offset_s": dataset.applied_offset_s,
                         "total_delay_s": dataset.total_delay_s,
                         "interpolation_method": methods[target_index],
@@ -159,6 +197,10 @@ def merge_datasets(datasets: list[NormalizedDataset], config: MergeConfig) -> Me
         "source_column",
         "source_row",
         "original_timestamp",
+        "source_row_left",
+        "source_row_right",
+        "original_timestamp_left",
+        "original_timestamp_right",
         "applied_offset_s",
         "total_delay_s",
         "interpolation_method",
@@ -168,9 +210,38 @@ def merge_datasets(datasets: list[NormalizedDataset], config: MergeConfig) -> Me
     configuration = {
         "timeline": config.timeline,
         "reference_dataset": config.reference_dataset,
+        "experiment_origin": config.experiment_origin,
         "continuous_method": config.continuous_method,
         "stepwise_method": config.stepwise_method,
         "exact_tolerance_s": config.exact_tolerance_s,
+        "datasets": [
+            {
+                "name": dataset.name,
+                "source_file": str(dataset.source_file),
+                "time_column": dataset.time_column,
+                "time_representation": dataset.time_representation.value,
+                "alignment_method": dataset.alignment.method.value,
+                "manual_offset_s": dataset.alignment.manual_offset_s,
+                "source_event_time_s": dataset.alignment.source_event_time_s,
+                "target_event_time_s": dataset.alignment.target_event_time_s,
+                "delay": {
+                    "manual_s": dataset.delay.manual_s,
+                    "sampling_s": dataset.delay.sampling_s,
+                    "transport_s": dataset.delay.transport_s,
+                    "dead_volume_s": dataset.delay.dead_volume_s,
+                    "analysis_s": dataset.delay.analysis_s,
+                },
+                "channels": [
+                    {
+                        "source_column": channel.source_column,
+                        "data_type": channel.data_type.value,
+                        "output_name": channel.output_name,
+                    }
+                    for channel in dataset.channels
+                ],
+            }
+            for dataset in datasets
+        ],
     }
     return MergeResult(
         merged=merged,

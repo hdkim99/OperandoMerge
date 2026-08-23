@@ -15,10 +15,19 @@ def inspect_dataset(dataset: NormalizedDataset) -> list[QCIssue]:
     duplicate = time.duplicated(keep=False)
     for row in frame.index[duplicate].tolist():
         issues.append(
-            QCIssue("warning", "duplicate_timestamp", dataset.name, None, "Duplicate canonical timestamp", int(row))
+            QCIssue(
+                "warning",
+                "duplicate_timestamp",
+                dataset.name,
+                None,
+                "Duplicate canonical timestamp",
+                int(row),
+            )
         )
     if not time.is_monotonic_increasing:
-        issues.append(QCIssue("warning", "non_monotonic_time", dataset.name, None, "Time is not monotonic"))
+        issues.append(
+            QCIssue("warning", "non_monotonic_time", dataset.name, None, "Time is not monotonic")
+        )
     for channel in dataset.channels:
         values = frame[channel.source_column]
         missing_count = int(values.isna().sum())
@@ -62,4 +71,3 @@ def inspect_dataset(dataset: NormalizedDataset) -> list[QCIssue]:
                         )
                     )
     return issues
-

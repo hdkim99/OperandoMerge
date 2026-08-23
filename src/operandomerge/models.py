@@ -54,7 +54,13 @@ class DelayConfig:
 
     @property
     def total_s(self) -> float:
-        return self.manual_s + self.sampling_s + self.transport_s + self.dead_volume_s + self.analysis_s
+        return (
+            self.manual_s
+            + self.sampling_s
+            + self.transport_s
+            + self.dead_volume_s
+            + self.analysis_s
+        )
 
     def validate(self) -> None:
         for name, value in asdict(self).items():
@@ -113,6 +119,7 @@ class DatasetConfig:
 class MergeConfig:
     timeline: str = "union"
     reference_dataset: str | None = None
+    experiment_origin: str | None = None
     continuous_method: str = "linear"
     stepwise_method: str = "previous"
     exact_tolerance_s: float = 1e-9
@@ -122,6 +129,11 @@ class MergeConfig:
             raise ValueError("timeline must be 'union' or 'reference'")
         if self.timeline == "reference" and not self.reference_dataset:
             raise ValueError("reference_dataset is required for a reference timeline")
+        if self.experiment_origin is not None:
+            try:
+                pd.to_datetime(self.experiment_origin, utc=True)
+            except (TypeError, ValueError) as error:
+                raise ValueError("experiment_origin must be an ISO-8601 timestamp") from error
         if self.continuous_method not in {"linear", "nearest", "none"}:
             raise ValueError("continuous_method must be linear, nearest, or none")
         if self.stepwise_method not in {"previous", "none"}:
@@ -138,6 +150,8 @@ class NormalizedDataset:
     channels: tuple[ChannelConfig, ...]
     time_column: str
     time_representation: TimeRepresentation
+    alignment: AlignmentConfig
+    delay: DelayConfig
     applied_offset_s: float
     total_delay_s: float
     absolute_origin: pd.Timestamp | None
@@ -163,4 +177,3 @@ class MergeResult:
     metadata: pd.DataFrame
     qc: list[QCIssue]
     configuration: dict[str, Any]
-

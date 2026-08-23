@@ -4,8 +4,8 @@ from operandomerge.models import (
     AlignmentConfig,
     AlignmentMethod,
     ChannelConfig,
-    DataType,
     DatasetConfig,
+    DataType,
     DelayConfig,
     MergeConfig,
     TimeRepresentation,
@@ -24,4 +24,3 @@ __all__ = [
     "TimeRepresentation",
 ]
 __version__ = "0.1.0"
-
