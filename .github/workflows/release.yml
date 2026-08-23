@@ -28,6 +28,7 @@ jobs:
       - run: python -m twine check dist/*
       - run: python -m venv /tmp/operandomerge-release
       - run: /tmp/operandomerge-release/bin/pip install dist/*.whl
+      - run: /tmp/operandomerge-release/bin/python -m pip check
       - run: >-
           /tmp/operandomerge-release/bin/python -c
           "import operandomerge; print(operandomerge.__version__)"
