@@ -4,13 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "operandomerge"
-version = "0.1.0"
+version = "0.1.1"
 description = "Synchronize heterogeneous experimental data onto one reproducible timeline."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{ name = "OperandoMerge contributors" }]
-keywords = ["operando", "catalysis", "synchronization", "scientific-data"]
+authors = [{ name = "Hyun Dong Kim" }]
+maintainers = [{ name = "Hyun Dong Kim" }]
+keywords = [
+  "operando",
+  "catalysis",
+  "synchronization",
+  "scientific-data",
+  "time-series",
+  "chemical-engineering",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
@@ -19,7 +27,12 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Typing :: Typed",
+  "Operating System :: OS Independent",
 ]
 dependencies = [
   "matplotlib>=3.7,<4",
@@ -44,10 +57,14 @@ operandomerge-gui = "operandomerge.gui:main"
 
 [project.urls]
 Homepage = "https://github.com/hdkim99/OperandoMerge"
+Documentation = "https://github.com/hdkim99/OperandoMerge#readme"
 Issues = "https://github.com/hdkim99/OperandoMerge/issues"
+Source = "https://github.com/hdkim99/OperandoMerge"
+Changelog = "https://github.com/hdkim99/OperandoMerge/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/operandomerge"]
+
 
 [tool.ruff]
 target-version = "py310"

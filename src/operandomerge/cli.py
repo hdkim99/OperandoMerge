@@ -10,6 +10,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from operandomerge import __version__
 from operandomerge.config import load_config
 from operandomerge.export import export_csv_bundle, export_excel, plot_alignment
 from operandomerge.io import inspect_columns
@@ -18,7 +19,7 @@ from operandomerge.service import MergeService
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="operandomerge", description=__doc__)
-    parser.add_argument("--version", action="version", version="OperandoMerge 0.1.0")
+    parser.add_argument("--version", action="version", version=f"OperandoMerge {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     inspect_parser = subparsers.add_parser("inspect", help="List columns in a CSV/XLSX file")

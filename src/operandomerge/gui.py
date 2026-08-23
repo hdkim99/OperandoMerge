@@ -10,6 +10,7 @@ from tkinter import filedialog, messagebox, ttk
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from operandomerge import __version__
 from operandomerge.controller import GuiController, merge_config_from_fields
 from operandomerge.export import plot_alignment
 from operandomerge.io import inspect_columns
@@ -491,7 +492,7 @@ class ResultDialog(tk.Toplevel):
 
 def create_app() -> tuple[tk.Tk, OperandoMergeApp]:
     root = tk.Tk()
-    root.title("OperandoMerge 0.1.0")
+    root.title(f"OperandoMerge {__version__}")
     root.geometry("1320x560")
     return root, OperandoMergeApp(root)
 
