@@ -18,6 +18,11 @@ from operandomerge.timeline import discover_absolute_origin, normalize_dataset, 
 
 
 def _config(path: Path, representation: TimeRepresentation, **kwargs: object) -> DatasetConfig:
+    if "alignment" not in kwargs and representation in {
+        TimeRepresentation.ABSOLUTE,
+        TimeRepresentation.INJECTION_TIMESTAMP,
+    }:
+        kwargs["alignment"] = AlignmentConfig(method=AlignmentMethod.ABSOLUTE)
     return DatasetConfig(
         path=path,
         time_column="time",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -64,7 +65,7 @@ class DelayConfig:
 
     def validate(self) -> None:
         for name, value in asdict(self).items():
-            if value < 0:
+            if not isfinite(value) or value < 0:
                 raise ValueError(f"Delay {name} must be non-negative, got {value}")
 
 
@@ -76,9 +77,13 @@ class AlignmentConfig:
     target_event_time_s: float | None = None
 
     def effective_offset_s(self) -> float:
+        if not isfinite(self.manual_offset_s):
+            raise ValueError("manual_offset_s must be finite")
         if self.method is AlignmentMethod.REFERENCE_EVENT:
             if self.source_event_time_s is None or self.target_event_time_s is None:
                 raise ValueError("Reference-event alignment requires source and target event times")
+            if not isfinite(self.source_event_time_s) or not isfinite(self.target_event_time_s):
+                raise ValueError("Reference-event times must be finite")
             return self.target_event_time_s - self.source_event_time_s + self.manual_offset_s
         return self.manual_offset_s
 
@@ -111,6 +116,16 @@ class DatasetConfig:
         source_columns = [channel.source_column for channel in self.channels]
         if len(source_columns) != len(set(source_columns)):
             raise ValueError(f"Dataset {self.dataset_name!r} has duplicate channel mappings")
+        absolute_clock = self.time_representation in {
+            TimeRepresentation.ABSOLUTE,
+            TimeRepresentation.INJECTION_TIMESTAMP,
+        }
+        if self.alignment.method is AlignmentMethod.ABSOLUTE and not absolute_clock:
+            raise ValueError("Absolute alignment requires an absolute or injection timestamp")
+        if self.alignment.method is AlignmentMethod.ELAPSED and absolute_clock:
+            raise ValueError(
+                "Absolute/injection timestamps require absolute, manual, or event alignment"
+            )
         self.delay.validate()
         self.alignment.effective_offset_s()
 
@@ -138,7 +153,7 @@ class MergeConfig:
             raise ValueError("continuous_method must be linear, nearest, or none")
         if self.stepwise_method not in {"previous", "none"}:
             raise ValueError("stepwise_method must be previous or none")
-        if self.exact_tolerance_s < 0:
+        if not isfinite(self.exact_tolerance_s) or self.exact_tolerance_s < 0:
             raise ValueError("exact_tolerance_s cannot be negative")
 
 

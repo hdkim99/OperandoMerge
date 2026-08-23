@@ -8,8 +8,9 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
-from operandomerge.controller import GuiController
+from operandomerge.controller import GuiController, merge_config_from_fields
 from operandomerge.export import plot_alignment
 from operandomerge.io import inspect_columns
 from operandomerge.models import (
@@ -19,7 +20,7 @@ from operandomerge.models import (
     DatasetConfig,
     DataType,
     DelayConfig,
-    MergeConfig,
+    QCIssue,
     TimeRepresentation,
 )
 
@@ -166,11 +167,8 @@ class DatasetDialog(tk.Toplevel):
                     raise ValueError(f"Invalid channel mapping line: {line!r}")
                 if parts[0] not in self.column_names:
                     raise ValueError(f"Unknown source column {parts[0]!r}")
-                channels.append(
-                    ChannelConfig(
-                        parts[0], DataType(parts[1]), parts[2] or None if len(parts) == 3 else None
-                    )
-                )
+                output_name = parts[2] or None if len(parts) == 3 else None
+                channels.append(ChannelConfig(parts[0], DataType(parts[1]), output_name))
             config = DatasetConfig(
                 path=self.path,
                 name=self.name_var.get().strip() or self.path.stem,
@@ -205,6 +203,8 @@ class OperandoMergeApp(ttk.Frame):
         self.reference_var = tk.StringVar()
         self.origin_var = tk.StringVar()
         self.continuous_var = tk.StringVar(value="linear")
+        self.stepwise_var = tk.StringVar(value="previous")
+        self.tolerance_var = tk.StringVar(value="1e-9")
         self._build()
         self.refresh()
 
@@ -267,6 +267,16 @@ class OperandoMergeApp(ttk.Frame):
             width=9,
             state="readonly",
         ).pack(side="left", padx=5)
+        ttk.Label(settings, text="Stepwise").pack(side="left", padx=(8, 0))
+        ttk.Combobox(
+            settings,
+            textvariable=self.stepwise_var,
+            values=["previous", "none"],
+            width=9,
+            state="readonly",
+        ).pack(side="left", padx=5)
+        ttk.Label(settings, text="Exact tolerance / s").pack(side="left", padx=(8, 0))
+        ttk.Entry(settings, textvariable=self.tolerance_var, width=8).pack(side="left", padx=5)
         actions = ttk.Frame(self)
         actions.grid(row=3, column=0, sticky="ew")
         ttk.Button(actions, text="Merge", command=self.merge).pack(side="left")
@@ -274,6 +284,9 @@ class OperandoMergeApp(ttk.Frame):
             side="left", padx=5
         )
         ttk.Button(actions, text="Export Excel", command=self.export).pack(side="left")
+        ttk.Button(actions, text="Inspect result", command=self.inspect_result).pack(
+            side="left", padx=5
+        )
         ttk.Label(actions, textvariable=self.status).pack(side="right")
 
     def refresh(self) -> None:
@@ -300,7 +313,8 @@ class OperandoMergeApp(ttk.Frame):
     def add_files(self) -> None:
         names = filedialog.askopenfilenames(filetypes=[("Tabular data", "*.csv *.xlsx *.xlsm")])
         for name in names:
-            DatasetDialog(self, Path(name), self._append_dataset)
+            dialog = DatasetDialog(self, Path(name), self._append_dataset)
+            self.wait_window(dialog)
 
     def _append_dataset(self, config: DatasetConfig) -> None:
         if config.dataset_name in {item.dataset_name for item in self.controller.datasets}:
@@ -334,11 +348,13 @@ class OperandoMergeApp(ttk.Frame):
             self.refresh()
 
     def _sync_merge_config(self) -> None:
-        self.controller.merge_config = MergeConfig(
-            timeline=self.timeline_var.get(),
-            reference_dataset=self.reference_var.get() or None,
-            experiment_origin=self.origin_var.get() or None,
-            continuous_method=self.continuous_var.get(),
+        self.controller.merge_config = merge_config_from_fields(
+            self.timeline_var.get(),
+            self.reference_var.get(),
+            self.origin_var.get(),
+            self.continuous_var.get(),
+            self.stepwise_var.get(),
+            self.tolerance_var.get(),
         )
 
     def merge(self) -> None:
@@ -371,6 +387,17 @@ class OperandoMergeApp(ttk.Frame):
             self.controller.export(Path(destination))
             self.status.set(f"Exported {destination}")
 
+    def inspect_result(self) -> None:
+        if self.controller.result is None:
+            self.merge()
+        if self.controller.result is not None:
+            ResultDialog(
+                self,
+                self.controller.result.merged,
+                self.controller.result.provenance,
+                self.controller.result.qc,
+            )
+
     def load_config(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("JSON config", "*.json")])
         if not path:
@@ -384,10 +411,16 @@ class OperandoMergeApp(ttk.Frame):
         self.reference_var.set(self.controller.merge_config.reference_dataset or "")
         self.origin_var.set(self.controller.merge_config.experiment_origin or "")
         self.continuous_var.set(self.controller.merge_config.continuous_method)
+        self.stepwise_var.set(self.controller.merge_config.stepwise_method)
+        self.tolerance_var.set(str(self.controller.merge_config.exact_tolerance_s))
         self.refresh()
 
     def save_config(self) -> None:
-        self._sync_merge_config()
+        try:
+            self._sync_merge_config()
+        except ValueError as error:
+            messagebox.showerror("Invalid merge policy", str(error), parent=self)
+            return
         path = filedialog.asksaveasfilename(
             defaultextension=".json", filetypes=[("JSON config", "*.json")]
         )
@@ -416,10 +449,50 @@ def _optional_gui_float(text: str) -> float | None:
     return None if not text.strip() else float(text)
 
 
+class ResultDialog(tk.Toplevel):
+    """Inspect merged values, provenance, and QC without recomputation."""
+
+    def __init__(
+        self,
+        parent: tk.Misc,
+        merged: pd.DataFrame,
+        provenance: pd.DataFrame,
+        qc: list[QCIssue],
+    ) -> None:
+        super().__init__(parent)
+        self.title("OperandoMerge result")
+        self.geometry("1000x560")
+        notebook = ttk.Notebook(self)
+        notebook.pack(fill="both", expand=True)
+        self._add_frame(notebook, "Merged", merged)
+        self._add_frame(notebook, "Provenance", provenance)
+        qc_frame = pd.DataFrame([issue.as_dict() for issue in qc])
+        self._add_frame(notebook, "QC", qc_frame)
+
+    @staticmethod
+    def _add_frame(notebook: ttk.Notebook, title: str, frame: pd.DataFrame) -> None:
+        container = ttk.Frame(notebook)
+        notebook.add(container, text=title)
+        tree = ttk.Treeview(container, columns=list(frame.columns), show="headings")
+        for column in frame.columns:
+            tree.heading(str(column), text=str(column))
+            tree.column(str(column), width=130, stretch=True)
+        for row in frame.head(500).itertuples(index=False, name=None):
+            tree.insert("", "end", values=["" if pd.isna(value) else value for value in row])
+        vertical = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
+        horizontal = ttk.Scrollbar(container, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
+        tree.grid(row=0, column=0, sticky="nsew")
+        vertical.grid(row=0, column=1, sticky="ns")
+        horizontal.grid(row=1, column=0, sticky="ew")
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+
 def create_app() -> tuple[tk.Tk, OperandoMergeApp]:
     root = tk.Tk()
     root.title("OperandoMerge 0.1.0")
-    root.geometry("1050x520")
+    root.geometry("1320x560")
     return root, OperandoMergeApp(root)
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from operandomerge.cli import main
-from operandomerge.controller import GuiController
+from operandomerge.controller import GuiController, merge_config_from_fields
 from operandomerge.models import (
     AlignmentConfig,
     AlignmentMethod,
@@ -81,7 +81,7 @@ def test_gui_controller_passes_alignment_delay_channel_and_merge_settings(table_
         exact_tolerance_s=0.02,
     )
     service = CapturingService()
-    controller = GuiController(service=service)  # type: ignore[arg-type]
+    controller = GuiController(service=service)
     controller.datasets = [dataset]
     controller.merge_config = merge
     controller.run_merge()
@@ -90,3 +90,22 @@ def test_gui_controller_passes_alignment_delay_channel_and_merge_settings(table_
     assert service.datasets[0].channels[0].data_type is DataType.DISCRETE_SAMPLE
     assert service.datasets[0].alignment.effective_offset_s() == 13
     assert service.datasets[0].delay.total_s == 15
+
+
+def test_gui_text_controls_preserve_all_merge_settings() -> None:
+    config = merge_config_from_fields(
+        "reference",
+        "gc",
+        "2026-01-01T00:00:00Z",
+        "nearest",
+        "none",
+        "0.025",
+    )
+    assert config == MergeConfig(
+        timeline="reference",
+        reference_dataset="gc",
+        experiment_origin="2026-01-01T00:00:00Z",
+        continuous_method="nearest",
+        stepwise_method="none",
+        exact_tolerance_s=0.025,
+    )

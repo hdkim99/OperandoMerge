@@ -69,3 +69,32 @@ def test_duplicate_dataset_channel_mapping_is_rejected() -> None:
     )
     with pytest.raises(ValueError, match="duplicate"):
         config.validate()
+
+
+def test_absolute_alignment_rejects_elapsed_clock() -> None:
+    config = DatasetConfig(
+        path=Path("sample.csv"),
+        time_column="time",
+        time_representation=TimeRepresentation.ELAPSED_SECONDS,
+        channels=(ChannelConfig("signal"),),
+        alignment=AlignmentConfig(method=AlignmentMethod.ABSOLUTE),
+    )
+    with pytest.raises(ValueError, match="Absolute alignment requires"):
+        config.validate()
+
+
+def test_elapsed_alignment_rejects_absolute_clock() -> None:
+    config = DatasetConfig(
+        path=Path("sample.csv"),
+        time_column="time",
+        time_representation=TimeRepresentation.ABSOLUTE,
+        channels=(ChannelConfig("signal"),),
+    )
+    with pytest.raises(ValueError, match="require absolute"):
+        config.validate()
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_non_finite_delay_is_rejected(value: float) -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        DelayConfig(sampling_s=value).validate()
