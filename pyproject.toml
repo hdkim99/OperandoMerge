@@ -60,7 +60,9 @@ Homepage = "https://github.com/hdkim99/OperandoMerge"
 Documentation = "https://github.com/hdkim99/OperandoMerge#readme"
 Issues = "https://github.com/hdkim99/OperandoMerge/issues"
 Source = "https://github.com/hdkim99/OperandoMerge"
+Repository = "https://github.com/hdkim99/OperandoMerge"
 Changelog = "https://github.com/hdkim99/OperandoMerge/blob/main/CHANGELOG.md"
+Releases = "https://github.com/hdkim99/OperandoMerge/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/operandomerge"]
