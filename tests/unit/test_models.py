@@ -60,6 +60,13 @@ def test_invalid_merge_config_is_rejected(kwargs: dict[str, object], message: st
         MergeConfig(**kwargs).validate()
 
 
+def test_experiment_origin_requires_explicit_timezone() -> None:
+    with pytest.raises(ValueError, match="explicit ISO-8601 timezone offset"):
+        MergeConfig(experiment_origin="2024-01-31 19:00:00").validate()
+
+    MergeConfig(experiment_origin="2024-01-31T19:00:00+01:00").validate()
+
+
 def test_duplicate_dataset_channel_mapping_is_rejected() -> None:
     config = DatasetConfig(
         path=Path("sample.csv"),

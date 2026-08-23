@@ -108,7 +108,11 @@ jobs:
         run: |
           command -v xvfb-run
           "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -c "import tkinter"
-          xvfb-run -a "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" -c "from operandomerge.gui import create_app; root, app = create_app(); root.update(); root.destroy()"
+          xvfb-run -a "$RUNNER_TEMP/$CI_WHEEL_ENV_NAME/bin/python" \
+            tests/gui_widget_smoke.py \
+            examples/example-config.json \
+            "$RUNNER_TEMP/$CI_OUTPUT_NAME/gui-report.xlsx"
+          test -s "$RUNNER_TEMP/$CI_OUTPUT_NAME/gui-report.xlsx"
       - name: Remove isolated environments and generated files
         if: always()
         run: |

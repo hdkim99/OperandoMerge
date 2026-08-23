@@ -74,6 +74,29 @@ def test_unparseable_absolute_timestamp_fails_before_merge(table_writer) -> None
         discover_absolute_origin([_config(path, TimeRepresentation.ABSOLUTE)])
 
 
+@pytest.mark.parametrize(
+    "representation",
+    [TimeRepresentation.ABSOLUTE, TimeRepresentation.INJECTION_TIMESTAMP],
+)
+def test_naive_zenodo_ms_wall_clock_is_not_silently_assumed_utc(
+    table_writer, representation: TimeRepresentation
+) -> None:
+    path = table_writer(
+        "zenodo_ms_naive_clock",
+        {"time": ["2024-01-31 15:25:06"], "signal": [1]},
+    )
+    with pytest.raises(ValueError, match="timezone offset"):
+        discover_absolute_origin([_config(path, representation)])
+
+
+def test_explicit_origin_is_not_a_backdoor_for_naive_utc() -> None:
+    with pytest.raises(ValueError, match="timezone offset"):
+        discover_absolute_origin([], "2024-01-31 19:00:00")
+
+    origin = discover_absolute_origin([], "2024-01-31T20:00:00+01:00")
+    assert origin == pd.Timestamp("2024-01-31T19:00:00Z")
+
+
 def test_reference_event_alignment_changes_real_canonical_time(table_writer) -> None:
     path = table_writer("event", {"time": [7, 17], "signal": [1, 2]})
     config = _config(

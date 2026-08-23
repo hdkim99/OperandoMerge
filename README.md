@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/hdkim99/OperandoMerge/actions/workflows/ci.yml/badge.svg)](https://github.com/hdkim99/OperandoMerge/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://github.com/hdkim99/OperandoMerge/blob/main/LICENSE)
 
 OperandoMerge aligns reactor loggers, MFCs, high-frequency MS, sparse GC, XRD,
 Raman, FTIR, and other CSV/XLSX logs without hiding where values came from. It
@@ -83,7 +83,7 @@ different clocks and sampling intervals:
 | XRD | 60 s | −5 s clock offset + 15 s analysis delay | phase stepwise; lattice discrete |
 
 The raw clocks and applied corrections remain in metadata/provenance. See the
-[showcase definition](examples/showcase/README.md) for hand-checkable invariants.
+[showcase definition](https://github.com/hdkim99/OperandoMerge/blob/main/examples/showcase/README.md) for hand-checkable invariants.
 
 ## Scientific rules
 
@@ -132,7 +132,7 @@ export_excel(result, Path("operandomerge-showcase.xlsx"))
 
 ## Supported, experimental, planned
 
-Supported in 0.1.2:
+Supported in 0.1.3:
 
 - multiple CSV/XLSX inputs and one selected worksheet per dataset;
 - absolute/injection timestamps, elapsed seconds/minutes, and midnight-wrapping
@@ -147,7 +147,7 @@ Experimental:
 
 - automatic GUI time-column guesses, which must be reviewed;
 - robust-MAD possible-outlier warnings; and
-- the [interchange draft](docs/interchange-draft.md), which documents concepts
+- the [interchange draft](https://github.com/hdkim99/OperandoMerge/blob/main/docs/interchange-draft.md), which documents concepts
   but is not a stable cross-project contract.
 
 Planned, not implemented:
@@ -163,6 +163,9 @@ Planned, not implemented:
 
 - OperandoMerge cannot prove that two clock events represent the same physical
   event. Users must justify every offset and delay.
+- Absolute and injection timestamps require an explicit ISO-8601 timezone offset.
+  Unzoned instrument clocks must use `instrument_local_time` or a documented
+  elapsed/reference-event workflow; OperandoMerge never guesses UTC.
 - Signal units are preserved as source metadata/names but are not converted or
   dimensionally validated in this release.
 - Numeric channels are required for resampling. Categorical phase labels should be
@@ -175,9 +178,10 @@ Planned, not implemented:
 - Synthetic curves demonstrate synchronization behavior, not validated reactor
   kinetics, mass balances, or diffraction physics.
 
-Validation details are in [scientific validation](docs/scientific-validation.md),
-and every JSON setting is described in the
-[configuration reference](docs/configuration.md).
+Validation details are in [scientific validation](https://github.com/hdkim99/OperandoMerge/blob/main/docs/scientific-validation.md)
+and the [public-data source register](https://github.com/hdkim99/OperandoMerge/blob/main/docs/public-data-sources.md), and every JSON
+setting is described in the
+[configuration reference](https://github.com/hdkim99/OperandoMerge/blob/main/docs/configuration.md).
 
 ## Related tools
 
@@ -197,6 +201,10 @@ pytest
 python -m build
 ```
 
-Contributions are welcome under [CONTRIBUTING.md](CONTRIBUTING.md). Cite the
-software using [CITATION.cff](CITATION.cff). The project is MIT-licensed; the
-[dependency license review](docs/dependency-licenses.md) records compatibility.
+Contributions are welcome under
+[CONTRIBUTING.md](https://github.com/hdkim99/OperandoMerge/blob/main/CONTRIBUTING.md).
+Cite the software using
+[CITATION.cff](https://github.com/hdkim99/OperandoMerge/blob/main/CITATION.cff).
+The project is MIT-licensed; the
+[dependency license review](https://github.com/hdkim99/OperandoMerge/blob/main/docs/dependency-licenses.md)
+records compatibility.

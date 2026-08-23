@@ -16,11 +16,23 @@ from operandomerge.models import DatasetConfig, NormalizedDataset, TimeRepresent
 
 
 def parse_absolute(series: pd.Series) -> pd.Series:
-    parsed = pd.to_datetime(series, errors="coerce", utc=True, format="mixed")
-    if parsed.isna().any():
-        rows = parsed.index[parsed.isna()].tolist()[:5]
+    parsed_with_source_zones = pd.to_datetime(series, errors="coerce", format="mixed")
+    if parsed_with_source_zones.isna().any():
+        rows = parsed_with_source_zones.index[parsed_with_source_zones.isna()].tolist()[:5]
         raise ValueError(f"Unparseable absolute timestamp at row(s) {rows}")
-    return parsed
+    naive_rows = [
+        index
+        for index, value in parsed_with_source_zones.items()
+        if getattr(value, "tzinfo", None) is None or value.utcoffset() is None
+    ]
+    if naive_rows:
+        raise ValueError(
+            "Absolute/injection timestamp has no timezone offset at row(s) "
+            f"{naive_rows[:5]}. Include an ISO-8601 offset such as 'Z' or '+01:00'. "
+            "For clocks that are only comparable within one experiment, use "
+            "instrument_local_time or an elapsed/reference-event workflow instead."
+        )
+    return pd.to_datetime(series, errors="raise", utc=True, format="mixed")
 
 
 def _local_clock_seconds(value: object) -> float:
@@ -55,10 +67,9 @@ def discover_absolute_origin(
     configs: list[DatasetConfig], explicit_origin: str | None = None
 ) -> pd.Timestamp | None:
     if explicit_origin is not None:
-        try:
-            parsed_origin = pd.to_datetime(explicit_origin, utc=True)
-        except (TypeError, ValueError) as error:
-            raise ValueError("experiment_origin must be an ISO-8601 timestamp") from error
+        parsed_origin = parse_absolute(
+            pd.Series([explicit_origin], index=["experiment_origin"], dtype="object")
+        ).iloc[0]
         if not isinstance(parsed_origin, pd.Timestamp):
             raise ValueError("experiment_origin must be a single timestamp")
         return parsed_origin

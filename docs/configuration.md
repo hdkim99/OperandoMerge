@@ -10,6 +10,15 @@ Time representations are `absolute`, `injection_timestamp`, `elapsed_seconds`,
 `manual_offset_s` can be used with any method. Reference-event alignment also
 requires `source_event_time_s` and `target_event_time_s`.
 
+`absolute` and `injection_timestamp` values must contain an explicit ISO-8601
+timezone offset, such as `2026-01-01T12:00:00Z` or
+`2026-01-01T13:00:00+01:00`. OperandoMerge does not silently interpret a naive
+instrument wall clock as UTC. An explicit `experiment_origin` must carry the
+same offset information. If instruments share only an unzoned local clock,
+map `HH:MM:SS[.sss]` to `instrument_local_time`, or derive an elapsed coordinate
+with a documented reference event. Preserve the original wall-clock column as
+source metadata; do not add a guessed timezone.
+
 Positive delay components are seconds and must be non-negative. They are summed
 and subtracted from reported time. Negative clock corrections belong in
 `manual_offset_s`, not in a delay field.

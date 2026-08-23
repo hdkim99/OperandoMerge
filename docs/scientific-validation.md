@@ -17,6 +17,13 @@ comparing the implementation to itself. It also tests known reference-event
 offset recovery, local-clock midnight rollover, minute-to-second conversion,
 no extrapolation, scaling linearity, duplicate/missing QC, and provenance fields.
 
+Timezone-aware ISO-8601 inputs are normalized to UTC. Naive values in
+`absolute` or `injection_timestamp` columns, and naive `experiment_origin`
+values, are rejected rather than silently localized to UTC. The regression uses
+the unzoned timestamp representation found in the selected public MS data.
+Details and the opt-in real-data workflow are in
+[public-data validation sources](public-data-sources.md).
+
 ## Five-instrument showcase regression
 
 The larger `examples/showcase` workflow adds independent reactor, MFC, MS, GC,

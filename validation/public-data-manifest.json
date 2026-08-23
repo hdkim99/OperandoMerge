@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "accessed_on": "2026-08-23",
+  "sources": {
+    "OM-PUB-001": {
+      "title": "Dataset for: Dopant-Controlled Oxygen Vacancy Dynamics Define CO2-to-Methanol Catalysis on In2O3",
+      "creators": [
+        "Matthias Becker",
+        "Margareth Baidun",
+        "Annelies Landuyt",
+        "Agnieszka Kierzkowska",
+        "Felix Donat",
+        "Alexander Kolganov",
+        "Evgeny Pidko",
+        "Paula Abdala",
+        "Alexey Fedorov",
+        "Christoph Müller"
+      ],
+      "repository": "Zenodo",
+      "record_url": "https://zenodo.org/records/21884075",
+      "dataset_doi": "10.5281/zenodo.21884075",
+      "concept_doi": "10.5281/zenodo.19450659",
+      "dataset_license": "CC-BY-4.0",
+      "article_doi": "10.1038/s41467-026-72876-w",
+      "article_license": "CC-BY-NC-ND-4.0",
+      "validation_level": "primary_same-run_gc_ms_alignment",
+      "files": {
+        "figure_4_gc_ms": {
+          "name": "04_Figure_4_a_catalysis_operando.zip",
+          "size_bytes": 6132151,
+          "sha256": "bcadc5efc35229e1920c04500ca3325164137ff2c677b2487c2b392ba439810f",
+          "download_url": "https://zenodo.org/api/records/21884075/files/04_Figure_4_a_catalysis_operando.zip/content",
+          "members": {
+            "5Sn_gc": {
+              "path": "04_Figure_4_a_catalysis_operando/In2O3_5Sn_GC_data.txt",
+              "size_bytes": 25948
+            },
+            "5Sn_ms": {
+              "path": "04_Figure_4_a_catalysis_operando/In2O3_5Sn_MS_data_export.csv",
+              "size_bytes": 1169428
+            },
+            "5Zr_gc": {
+              "path": "04_Figure_4_a_catalysis_operando/In2O3_5Zr_GC_data.txt",
+              "size_bytes": 100444
+            },
+            "5Zr_ms": {
+              "path": "04_Figure_4_a_catalysis_operando/In2O3_5Zr_MS_data_export.csv",
+              "size_bytes": 4059570
+            },
+            "5Sn_qmp_unsupported": {
+              "path": "04_Figure_4_a_catalysis_operando/In2O3_5Sn_MS_data.qmp",
+              "size_bytes": 4075520
+            },
+            "5Zr_qmp_unsupported": {
+              "path": "04_Figure_4_a_catalysis_operando/In2O3_5Zr_MS_data.qmp",
+              "size_bytes": 9035776
+            }
+          },
+          "runs": {
+            "5Sn": {
+              "gc_member": "5Sn_gc",
+              "ms_member": "5Sn_ms",
+              "rx_origin_local": "2024-01-31 19:00:00",
+              "gc_injections": 64,
+              "gc_start_local": "2024-01-31 16:32:00",
+              "gc_end_local": "2024-02-01 00:12:00",
+              "gc_cadence_s_min_median_max": [420.0, 420.0, 480.0],
+              "ms_rows": 7639,
+              "ms_start_local": "2024-01-31 15:25:06",
+              "ms_end_local": "2024-02-01 00:23:49",
+              "ms_elapsed_hours_start_end": [-3.581666667, 5.396944444],
+              "ms_cadence_s_min_median_max": [4.0, 4.0, 5.0]
+            },
+            "5Zr": {
+              "gc_member": "5Zr_gc",
+              "ms_member": "5Zr_ms",
+              "rx_origin_local": "2024-02-01 22:58:00",
+              "gc_injections": 255,
+              "gc_start_local": "2024-02-01 19:47:00",
+              "gc_end_local": "2024-02-03 02:38:00",
+              "gc_cadence_s_min_median_max": [420.0, 420.0, 480.0],
+              "ms_rows": 26552,
+              "ms_start_local": "2024-02-01 19:28:58",
+              "ms_end_local": "2024-02-03 02:41:24",
+              "ms_elapsed_hours_start_end": [-3.483888889, 27.723333333],
+              "ms_cadence_s_min_median_max": [4.0, 4.0, 5.0]
+            }
+          }
+        },
+        "figure_5_tpr": {
+          "name": "08_Figure_5_d_e_f_g_TPR.zip",
+          "size_bytes": 4401662,
+          "sha256": "f1489430b9cf1f664f64ca27a117e26cadb597e6d250ff0ec4c82758578886e8",
+          "download_url": "https://zenodo.org/api/records/21884075/files/08_Figure_5_d_e_f_g_TPR.zip/content",
+          "validation_level": "secondary_combined-table_sparse-and-duplicate-qc",
+          "representative_member": {
+            "path": "08_Figure_5_d_e_f_g_TPR/In2O3_5Zr_TPR_5H2Ar01CO2.csv",
+            "size_bytes": 2953645,
+            "table_rows": 16665,
+            "ms_populated_rows": 8184,
+            "unique_ms_timestamps": 4089,
+            "duplicate_qc_rows": 8184,
+            "zero_time_transitions": 4095,
+            "negative_time_transitions": 0,
+            "positive_ms_cadence_s_min_median_max": [4.072998, 4.074, 4.081]
+          }
+        }
+      }
+    },
+    "OM-PUB-002": {
+      "title": "Raw data for manuscript Lydia J. Bachmann et al., In situ X-ray imaging of segregation and mixing in PtPd core-shell nanoparticles under methane oxidation conditions",
+      "creators": [
+        "Lydia J. Bachmann",
+        "Jagrati Dwivedi",
+        "Dmitry Lapkin",
+        "Bihan Wang",
+        "Jan-Christian Schober",
+        "Gerard N. Hinsley",
+        "Sarah Bernart",
+        "Kuan Hoon Ngoi",
+        "Rustam Rysov",
+        "Arti Dangwal Pandey",
+        "Thomas F. Keller",
+        "Ivan Vartaniants",
+        "Andreas Stierle"
+      ],
+      "repository": "Zenodo",
+      "record_url": "https://zenodo.org/records/17642484",
+      "dataset_doi": "10.5281/zenodo.17642484",
+      "dataset_license": "CC-BY-4.0",
+      "article_doi": "10.1039/D5NR05321H",
+      "article_license": "CC-BY-NC-3.0",
+      "validation_level": "conditional_event_alignment_only",
+      "files": {
+        "mass_spectrometer": {
+          "name": "Masspec_data.zip",
+          "size_bytes": 33943813,
+          "sha256": "252c5830042a79aa45d4f1dfff2c02969d3eff9b74cbebc8324b134e67058f0e",
+          "contents": "6097 exported TXT scans plus original RGA/ANA files; 110415388 uncompressed bytes"
+        },
+        "event_logs": {
+          "name": "OverviewChanges.zip",
+          "size_bytes": 3158,
+          "sha256": "e4c79ccb03814f4227b2d25f0810d43327f8a291a0af7689197c05bffc849b85",
+          "members": {
+            "EBL2021_BCDI": 601,
+            "EBL2021_gases": 1541,
+            "EBL2021_heating": 1037,
+            "P10_ID01_4_BCDI": 414,
+            "P10_ID01_4_gases": 434,
+            "P10_ID01_4_heating": 640
+          }
+        },
+        "raw_bcdi": {
+          "names": ["Sample150_P10ID01#4.zip", "Sample670_EBL2021.zip"],
+          "combined_size_bytes": 33848760107,
+          "downloaded_for_audit": false
+        }
+      }
+    }
+  }
+}

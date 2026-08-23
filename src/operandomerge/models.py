@@ -146,9 +146,15 @@ class MergeConfig:
             raise ValueError("reference_dataset is required for a reference timeline")
         if self.experiment_origin is not None:
             try:
-                pd.to_datetime(self.experiment_origin, utc=True)
+                parsed_origin = pd.to_datetime(self.experiment_origin, errors="raise")
             except (TypeError, ValueError) as error:
                 raise ValueError("experiment_origin must be an ISO-8601 timestamp") from error
+            if not isinstance(parsed_origin, pd.Timestamp):
+                raise ValueError("experiment_origin must be a single timestamp")
+            if parsed_origin.tzinfo is None or parsed_origin.utcoffset() is None:
+                raise ValueError(
+                    "experiment_origin must include an explicit ISO-8601 timezone offset"
+                )
         if self.continuous_method not in {"linear", "nearest", "none"}:
             raise ValueError("continuous_method must be linear, nearest, or none")
         if self.stepwise_method not in {"previous", "none"}:
