@@ -7,12 +7,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
+    name: Lint and type check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
           cache: pip
@@ -21,13 +28,16 @@ jobs:
       - run: mypy src
 
   test:
+    name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10", "3.12"]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -37,6 +47,16 @@ jobs:
       - run: operandomerge merge examples/example-config.json --excel /tmp/report.xlsx --plot /tmp/alignment.png
       - run: test -s /tmp/report.xlsx && test -s /tmp/alignment.png
       - if: matrix.python-version == '3.12'
+        run: >-
+          python examples/showcase/generate_showcase.py
+          --output-dir /tmp/operandomerge-showcase
+      - if: matrix.python-version == '3.12'
+        run: >-
+          test -s /tmp/operandomerge-showcase/operandomerge-showcase.xlsx &&
+          test -s /tmp/operandomerge-showcase/before-after.png &&
+          test -s docs/images/showcase-before-after.png &&
+          test -s docs/images/social-preview.png
+      - if: matrix.python-version == '3.12'
         run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
       - if: matrix.python-version == '3.12'
         run: >-
@@ -45,10 +65,13 @@ jobs:
           root, app = create_app(); root.update(); root.destroy()"
 
   package:
+    name: Build and clean-install package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
           cache: pip

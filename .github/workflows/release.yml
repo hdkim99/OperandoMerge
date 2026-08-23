@@ -1,0 +1,72 @@
+name: Publish released package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify release artifacts
+    if: github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - run: python -m venv /tmp/operandomerge-release
+      - run: /tmp/operandomerge-release/bin/pip install dist/*.whl
+      - run: >-
+          /tmp/operandomerge-release/bin/python -c
+          "import operandomerge; print(operandomerge.__version__)"
+      - name: Verify release tag matches installed package
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          INSTALLED_VERSION=$(/tmp/operandomerge-release/bin/python -c "import operandomerge; print(operandomerge.__version__)")
+          test "${RELEASE_TAG}" = "v${INSTALLED_VERSION}"
+      - run: /tmp/operandomerge-release/bin/operandomerge --help
+      - run: >-
+          /tmp/operandomerge-release/bin/operandomerge merge
+          examples/showcase/config.json
+          --excel /tmp/release-showcase.xlsx
+          --plot /tmp/release-showcase.png
+      - run: test -s /tmp/release-showcase.xlsx && test -s /tmp/release-showcase.png
+      - run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
+      - run: >-
+          xvfb-run -a /tmp/operandomerge-release/bin/python -c
+          "from operandomerge.gui import create_app;
+          root, app = create_app(); root.update(); root.destroy()"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: python-package
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI with trusted publishing
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/operandomerge
+    permissions:
+      id-token: write # Required for PyPI trusted publishing; no API token is stored.
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: python-package
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
