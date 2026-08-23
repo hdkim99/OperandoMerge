@@ -17,3 +17,27 @@ comparing the implementation to itself. It also tests known reference-event
 offset recovery, local-clock midnight rollover, minute-to-second conversion,
 no extrapolation, scaling linearity, duplicate/missing QC, and provenance fields.
 
+## Five-instrument showcase regression
+
+The larger `examples/showcase` workflow adds independent reactor, MFC, MS, GC,
+and XRD clocks over 600 s:
+
+- reactor UTC records define the absolute origin and sample every 10 s;
+- the MFC source event at local elapsed 100 s is aligned to experiment 120 s,
+  producing a known +20 s offset;
+- MS values reported at 8–608 s have an 8 s transport delay and must recover
+  exactly 0–600 s;
+- GC values reported 30 s after physical sampling separate that delay into 12 s
+  sampling and 18 s analysis components. The three values must land at 120, 300,
+  and 480 s, while 298 other canonical rows stay missing;
+- XRD values reported 20 s late combine a −5 s clock offset and 15 s analysis
+  delay to recover 0, 60, …, 600 s; and
+- the union timeline must contain exactly 301 rows at 2 s intervals with no QC
+  issues for the valid synthetic inputs.
+
+Regression tests also confirm causal stepwise holding, no MFC extrapolation before
+its first physical record, GC composition sums of 100 mol%, discrete XRD lattice
+measurements, left/right source provenance for reactor interpolation, config
+roundtrip, physically invalid negative delay rejection, and real CLI Excel/plot
+generation. The signal curves are visualization fixtures, not kinetic or
+diffraction reference models.

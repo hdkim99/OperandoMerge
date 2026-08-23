@@ -1,0 +1,134 @@
+{
+  "datasets": [
+    {
+      "path": "reactor_logger.csv",
+      "name": "reactor",
+      "time_column": "timestamp_utc",
+      "time_representation": "absolute",
+      "channels": [
+        {
+          "source_column": "temperature_C",
+          "data_type": "continuous",
+          "output_name": "reactor_temperature_C"
+        },
+        {
+          "source_column": "pressure_bar",
+          "data_type": "continuous",
+          "output_name": "reactor_pressure_bar"
+        }
+      ],
+      "alignment": {
+        "method": "absolute"
+      }
+    },
+    {
+      "path": "mfc_controller.csv",
+      "name": "mfc",
+      "time_column": "instrument_local_time",
+      "time_representation": "instrument_local_time",
+      "channels": [
+        {
+          "source_column": "h2_flow_sccm",
+          "data_type": "stepwise",
+          "output_name": "mfc_h2_flow_sccm"
+        },
+        {
+          "source_column": "ar_flow_sccm",
+          "data_type": "stepwise",
+          "output_name": "mfc_ar_flow_sccm"
+        }
+      ],
+      "alignment": {
+        "method": "reference_event",
+        "source_event_time_s": 100.0,
+        "target_event_time_s": 120.0
+      }
+    },
+    {
+      "path": "mass_spectrometer.csv",
+      "name": "ms",
+      "time_column": "reported_elapsed_s",
+      "time_representation": "elapsed_seconds",
+      "channels": [
+        {
+          "source_column": "mz_44_au",
+          "data_type": "continuous",
+          "output_name": "ms_mz_44_au"
+        },
+        {
+          "source_column": "mz_28_au",
+          "data_type": "continuous",
+          "output_name": "ms_mz_28_au"
+        }
+      ],
+      "alignment": {
+        "method": "elapsed"
+      },
+      "delay": {
+        "transport_s": 8.0
+      }
+    },
+    {
+      "path": "gas_chromatograph.csv",
+      "name": "gc",
+      "time_column": "reported_injection_timestamp",
+      "time_representation": "injection_timestamp",
+      "channels": [
+        {
+          "source_column": "co2_mol_pct",
+          "data_type": "discrete_sample",
+          "output_name": "gc_co2_mol_pct"
+        },
+        {
+          "source_column": "co_mol_pct",
+          "data_type": "discrete_sample",
+          "output_name": "gc_co_mol_pct"
+        },
+        {
+          "source_column": "ch4_mol_pct",
+          "data_type": "discrete_sample",
+          "output_name": "gc_ch4_mol_pct"
+        }
+      ],
+      "alignment": {
+        "method": "absolute"
+      },
+      "delay": {
+        "sampling_s": 12.0,
+        "analysis_s": 18.0
+      }
+    },
+    {
+      "path": "xrd_scans.csv",
+      "name": "xrd",
+      "time_column": "reported_elapsed_s",
+      "time_representation": "elapsed_seconds",
+      "channels": [
+        {
+          "source_column": "reduced_phase_fraction",
+          "data_type": "stepwise",
+          "output_name": "xrd_reduced_phase_fraction"
+        },
+        {
+          "source_column": "lattice_parameter_A",
+          "data_type": "discrete_sample",
+          "output_name": "xrd_lattice_parameter_A"
+        }
+      ],
+      "alignment": {
+        "method": "manual_offset",
+        "manual_offset_s": -5.0
+      },
+      "delay": {
+        "analysis_s": 15.0
+      }
+    }
+  ],
+  "merge": {
+    "timeline": "union",
+    "experiment_origin": "2026-01-01T12:00:00Z",
+    "continuous_method": "linear",
+    "stepwise_method": "previous",
+    "exact_tolerance_s": 1e-9
+  }
+}
