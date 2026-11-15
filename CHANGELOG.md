@@ -3,6 +3,13 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] - 2026-11-16
+
+### Security
+
+- Update the PyPI publishing action to v1.14.3 (GHSA-5xjx-3w67-w9x9).
+  Scientific calculations and public APIs are unchanged.
+
 ## [0.1.3] - 2026-08-23
 
 ### Added
