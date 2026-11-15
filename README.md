@@ -147,7 +147,7 @@ export_excel(result, Path("operandomerge-showcase.xlsx"))
 
 ## Supported, experimental, planned
 
-Supported in 0.1.3:
+Supported in 0.1.4:
 
 - multiple CSV/XLSX inputs and one selected worksheet per dataset;
 - absolute/injection timestamps, elapsed seconds/minutes, and midnight-wrapping
